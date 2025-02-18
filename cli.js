@@ -116,29 +116,31 @@ async function addPackageData(name, versions, options) {
 
 async function run(file, options) {
   const dependencies = await getDependencies(file)
+  const shouldFetchPackageData = options.verbose || options.maxOldVersions > 0
 
-  for (const {name, versions} of dependencies) {
-    await addPackageData(name, versions, options)
+  if (shouldFetchPackageData)
+    for (const {name, versions} of dependencies) {
+      await addPackageData(name, versions, options)
 
-    if (!options.verbose) continue
+      if (!options.verbose) continue
 
-    let title = styleText.green(name)
-    if (versions.length > 1) {
-      title += ` (${versions.length} ${pluralize('version', versions.length)})`
+      let title = styleText.green(name)
+      if (versions.length > 1) {
+        title += ` (${versions.length} ${pluralize('version', versions.length)})`
+      }
+
+      console.log(
+        table(
+          [
+            columnSettings.map(({name}) => name),
+            ...versions.map((dependency) =>
+              columnSettings.map((column) => column.value(dependency)),
+            ),
+          ],
+          {...tableOptions, header: {...tableOptions.header, content: title}},
+        ),
+      )
     }
-
-    console.log(
-      table(
-        [
-          columnSettings.map(({name}) => name),
-          ...versions.map((dependency) =>
-            columnSettings.map((column) => column.value(dependency)),
-          ),
-        ],
-        {...tableOptions, header: {...tableOptions.header, content: title}},
-      ),
-    )
-  }
 
   const versions = dependencies.flatMap(({versions}) => versions)
 
@@ -154,33 +156,35 @@ async function run(file, options) {
     ),
   )
 
-  const oldestVersions = versions
-    .filter(({releaseTimeStamp}) => releaseTimeStamp)
-    .toSorted(
-      (
-        {releaseTimeStamp: releaseTimeStampA},
-        {releaseTimeStamp: releaseTimeStampB},
-      ) => releaseTimeStampA - releaseTimeStampB,
-    )
-    .slice(0, 5)
+  if (options.maxOldVersions > 0) {
+    const oldestVersions = versions
+      .filter(({releaseTimeStamp}) => releaseTimeStamp)
+      .toSorted(
+        (
+          {releaseTimeStamp: releaseTimeStampA},
+          {releaseTimeStamp: releaseTimeStampB},
+        ) => releaseTimeStampA - releaseTimeStampB,
+      )
+      .slice(0, 5)
 
-  if (oldestVersions.length !== 0) {
-    console.log()
-    console.log(
-      table(
-        oldestVersions.map((dependency) => [
-          `${dependency.name}@${dependency.version}`,
-          dependency.relativeReleaseTime,
-        ]),
-        {
-          border: tableBorder,
-          header: {
-            alignment: 'left',
-            content: `Oldest ${styleText.red(String(oldestVersions.length))} ${pluralize('version', oldestVersions.length)}`,
+    if (oldestVersions.length !== 0) {
+      console.log()
+      console.log(
+        table(
+          oldestVersions.map((dependency) => [
+            `${dependency.name}@${dependency.version}`,
+            dependency.relativeReleaseTime,
+          ]),
+          {
+            border: tableBorder,
+            header: {
+              alignment: 'left',
+              content: `Oldest ${styleText.red(String(oldestVersions.length))} ${pluralize('version', oldestVersions.length)}`,
+            },
           },
-        },
-      ),
-    )
+        ),
+      )
+    }
   }
 }
 
@@ -190,8 +194,9 @@ const cli = meow(
       $ foo <input>
 
     Options
-      --verbose List all packages
-      --no-cache Disable cache
+      --verbose                List all packages
+      --no-cache               Disable cache
+      --max-old-versions       Max old versions
 
     Examples
       $ dependency-versions
@@ -201,6 +206,7 @@ const cli = meow(
     flags: {
       verbose: {type: 'boolean', default: false},
       cache: {type: 'boolean', default: true},
+      maxOldVersions: {type: 'number', default: 5},
     },
   },
 )
