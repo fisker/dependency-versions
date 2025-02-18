@@ -40,7 +40,6 @@ async function getPackageData(name, options) {
     text: `Fetching package data '${styleText.green.underline(name)}' ...`,
   }).start()
 
-  data = undefined
   try {
     const response = await fetch(`https://registry.npmjs.org/${name}`)
     data = await response.json()
@@ -50,16 +49,18 @@ async function getPackageData(name, options) {
     spinner.clear()
   }
 
-  // Don't care about the result
-  cacheWritePromises.push(
-    (async () => {
-      await fs.mkdir(cacheDirectory, {recursive: true})
-      await fs.writeFile(
-        cacheFile,
-        JSON.stringify({...data, __time: Date.now()}),
-      )
-    })(),
-  )
+  if (data) {
+    // Don't care about the result
+    cacheWritePromises.push(
+      (async () => {
+        await fs.mkdir(cacheDirectory, {recursive: true})
+        await fs.writeFile(
+          cacheFile,
+          JSON.stringify({...data, __time: Date.now()}),
+        )
+      })(),
+    )
+  }
 
   return data
 }
