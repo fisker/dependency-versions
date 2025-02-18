@@ -114,8 +114,8 @@ async function addPackageData(name, versions, options) {
   }
 }
 
-async function run(options) {
-  const dependencies = await getDependencies()
+async function run(file, options) {
+  const dependencies = await getDependencies(file)
 
   for (const {name, versions} of dependencies) {
     await addPackageData(name, versions, options)
@@ -146,7 +146,11 @@ async function run(options) {
   console.log(
     boxen(
       `${styleText.green(String(versions.length))} ${pluralize('version', versions.length)} of ${styleText.green(String(dependencies.length))} ${pluralize('dependency', dependencies.length, 'dependencies')} found.`,
-      {padding: 1, fullscreen: (width, height) => [width], align: 'center'},
+      {
+        padding: 1,
+        fullscreen: (width /* , height */) => [width],
+        align: 'center',
+      },
     ),
   )
 
@@ -201,4 +205,4 @@ const cli = meow(
   },
 )
 
-await run(cli.flags)
+await run(cli.input[0], cli.flags)
