@@ -46,7 +46,10 @@ async function getDependencies() {
     dependencies.get(name).push({...dependency, name, protocol})
   }
 
-  return dependencies
+  return Array.from(dependencies.entries(), ([name, versions]) => ({
+    name,
+    versions,
+  }))
 }
 
 export {getDependencies}

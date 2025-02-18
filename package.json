@@ -13,8 +13,8 @@
     "cli-table3": "0.6.5",
     "node-style-text": "0.0.7",
     "table": "6.9.0",
-    "table-layout": "4.1.1",
-    "timerel": "5.8.1"
+    "timerel": "5.8.1",
+    "yocto-spinner": "0.2.0"
   },
   "devDependencies": {
     "@fisker/eslint-config": "13.1.3",
