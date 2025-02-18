@@ -31,7 +31,11 @@ async function getPackageData(name, options) {
       // No op
     }
 
-    if (data.id && data?.__time && Date.now() - data.__time < CACHE_TIME) {
+    if (
+      data?.name === name &&
+      data?.__time &&
+      Date.now() - data.__time < CACHE_TIME
+    ) {
       return data
     }
   }
