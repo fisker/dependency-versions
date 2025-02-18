@@ -35,7 +35,7 @@ async function getPackageData(name, options) {
   }
 
   const spinner = yoctoSpinner({
-    text: `Fetching package data '${styleText.green.underline(name)}'`,
+    text: `Fetching package data '${styleText.green.underline(name)}' ...`,
   }).start()
 
   try {
@@ -114,33 +114,46 @@ async function addPackageData(name, versions, options) {
   }
 }
 
+async function processDependency({name, versions}, options) {
+  await addPackageData(name, versions, options)
+
+  if (!options.verbose) return
+
+  let title = styleText.green(name)
+  if (versions.length > 1) {
+    title += ` (${versions.length} ${pluralize('version', versions.length)})`
+  }
+
+  console.log(
+    table(
+      [
+        columnSettings.map(({name}) => name),
+        ...versions.map((dependency) =>
+          columnSettings.map((column) => column.value(dependency)),
+        ),
+      ],
+      {...tableOptions, header: {...tableOptions.header, content: title}},
+    ),
+  )
+}
+
 async function run(file, options) {
   const dependencies = await getDependencies(file)
   const shouldFetchPackageData = options.verbose || options.maxOldVersions > 0
 
-  if (shouldFetchPackageData)
-    for (const {name, versions} of dependencies) {
-      await addPackageData(name, versions, options)
-
-      if (!options.verbose) continue
-
-      let title = styleText.green(name)
-      if (versions.length > 1) {
-        title += ` (${versions.length} ${pluralize('version', versions.length)})`
+  if (shouldFetchPackageData) {
+    if (options.verbose) {
+      for (const dependency of dependencies) {
+        await processDependency(dependency, options)
       }
-
-      console.log(
-        table(
-          [
-            columnSettings.map(({name}) => name),
-            ...versions.map((dependency) =>
-              columnSettings.map((column) => column.value(dependency)),
-            ),
-          ],
-          {...tableOptions, header: {...tableOptions.header, content: title}},
+    } else {
+      await Promise.all(
+        dependencies.map((dependency) =>
+          processDependency(dependency, options),
         ),
       )
     }
+  }
 
   const versions = dependencies.flatMap(({versions}) => versions)
 
@@ -165,7 +178,7 @@ async function run(file, options) {
           {releaseTimeStamp: releaseTimeStampB},
         ) => releaseTimeStampA - releaseTimeStampB,
       )
-      .slice(0, 5)
+      .slice(0, options.maxOldVersions)
 
     if (oldestVersions.length !== 0) {
       console.log()
