@@ -10,7 +10,7 @@
   "bin": "./index.js",
   "dependencies": {
     "@yarnpkg/parsers": "^3.0.2",
-    "cli-table3": "0.6.5",
+    "boxen": "8.0.1",
     "node-style-text": "0.0.7",
     "table": "6.9.0",
     "timerel": "5.8.1",

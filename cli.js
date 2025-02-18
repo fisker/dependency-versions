@@ -5,6 +5,8 @@ import crypto from 'node:crypto'
 import {timerel} from 'timerel'
 import {table, getBorderCharacters} from 'table'
 import yoctoSpinner from 'yocto-spinner'
+import boxen from 'boxen'
+import meow from 'meow'
 
 const cacheDirectory = new URL('./.cache/', import.meta.url)
 const CACHE_TIME = 24 * 60 * 60 * 1000 // 1 Day
@@ -12,7 +14,7 @@ const CACHE_TIME = 24 * 60 * 60 * 1000 // 1 Day
 const pluralize = (singular, number, plural = `${singular}s`) =>
   number === 1 ? singular : plural
 
-async function getPackageData(name) {
+async function getPackageData(name, options) {
   const hash = `${name.replaceAll(/[\\/]/g, '_')}_${crypto
     .createHash('md5')
     .update(name)
@@ -20,14 +22,16 @@ async function getPackageData(name) {
   const cacheFile = new URL(`${hash}.json`, cacheDirectory)
 
   let data
-  try {
-    data = await JSON.parse(await fs.readFile(cacheFile))
-  } catch {
-    // No op
-  }
+  if (options.cache) {
+    try {
+      data = await JSON.parse(await fs.readFile(cacheFile))
+    } catch {
+      // No op
+    }
 
-  if (data?.__time && Date.now() - data.__time < CACHE_TIME) {
-    return data
+    if (data?.__time && Date.now() - data.__time < CACHE_TIME) {
+      return data
+    }
   }
 
   const spinner = yoctoSpinner({
@@ -78,16 +82,17 @@ const tableOptions = {
   columns: columnSettings.map(({alignment = 'left'}) => ({
     alignment,
   })),
+  // width: 100,
 }
 
-async function addPackageData(name, versions) {
+async function addPackageData(name, versions, options) {
   if (!versions.some(({protocol}) => protocol === 'npm')) {
     return
   }
 
   let packageData
   try {
-    packageData = await getPackageData(name)
+    packageData = await getPackageData(name, options)
   } catch {
     // No op
   }
@@ -109,11 +114,13 @@ async function addPackageData(name, versions) {
   }
 }
 
-async function run() {
+async function run(options) {
   const dependencies = await getDependencies()
 
   for (const {name, versions} of dependencies) {
-    await addPackageData(name, versions)
+    await addPackageData(name, versions, options)
+
+    if (!options.verbose) continue
 
     let title = styleText.green(name)
     if (versions.length > 1) {
@@ -122,9 +129,12 @@ async function run() {
 
     console.log(
       table(
-        versions.map((dependency) =>
-          columnSettings.map((column) => column.value(dependency)),
-        ),
+        [
+          columnSettings.map(({name}) => name),
+          ...versions.map((dependency) =>
+            columnSettings.map((column) => column.value(dependency)),
+          ),
+        ],
         {...tableOptions, header: {...tableOptions.header, content: title}},
       ),
     )
@@ -134,7 +144,10 @@ async function run() {
 
   console.log()
   console.log(
-    `${styleText.green(String(versions.length))} ${pluralize('version', versions.length)} of ${styleText.green(String(dependencies.length))} ${pluralize('dependency', dependencies.length, 'dependencies')} found.`,
+    boxen(
+      `${styleText.green(String(versions.length))} ${pluralize('version', versions.length)} of ${styleText.green(String(dependencies.length))} ${pluralize('dependency', dependencies.length, 'dependencies')} found.`,
+      {padding: 1, fullscreen: (width, height) => [width], align: 'center'},
+    ),
   )
 
   const oldestVersions = versions
@@ -167,4 +180,25 @@ async function run() {
   }
 }
 
-await run()
+const cli = meow(
+  /* Indent */ `
+    Usage
+      $ foo <input>
+
+    Options
+      --verbose List all packages
+      --no-cache Disable cache
+
+    Examples
+      $ dependency-versions
+  `,
+  {
+    importMeta: import.meta,
+    flags: {
+      verbose: {type: 'boolean', default: false},
+      cache: {type: 'boolean', default: true},
+    },
+  },
+)
+
+await run(cli.flags)
