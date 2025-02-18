@@ -49,7 +49,7 @@ async function getPackageData(name, options) {
     spinner.clear()
   }
 
-  if (data) {
+  if (data && !data.__time) {
     // Don't care about the result
     cacheWritePromises.push(
       (async () => {
