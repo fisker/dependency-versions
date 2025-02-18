@@ -2,7 +2,6 @@ import {parseSyml} from '@yarnpkg/parsers'
 import process from 'node:process'
 import path from 'node:path'
 import fs from 'node:fs/promises'
-import assert from 'node:assert/strict'
 
 function parseResolution(text) {
   const nameEndIndex = text.indexOf('@', text.startsWith('@') ? 1 : 0)
@@ -23,9 +22,8 @@ function parseResolution(text) {
   }
 }
 
-async function getDependencies() {
-  const yarnLockFile = path.join(process.cwd(), 'yarn.lock')
-  const content = await fs.readFile(yarnLockFile, 'utf8')
+async function getDependencies(file = path.join(process.cwd(), 'yarn.lock')) {
+  const content = await fs.readFile(file, 'utf8')
   const yarnLock = parseSyml(content)
 
   const seen = new Set()

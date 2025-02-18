@@ -7,6 +7,7 @@ import {table, getBorderCharacters} from 'table'
 import yoctoSpinner from 'yocto-spinner'
 import boxen from 'boxen'
 import meow from 'meow'
+import process from 'node:process'
 
 const cacheDirectory = new URL('./.cache/', import.meta.url)
 const CACHE_TIME = 24 * 60 * 60 * 1000 // 1 Day
@@ -14,6 +15,7 @@ const CACHE_TIME = 24 * 60 * 60 * 1000 // 1 Day
 const pluralize = (singular, number, plural = `${singular}s`) =>
   number === 1 ? singular : plural
 
+const cacheWritePromises = []
 async function getPackageData(name, options) {
   const hash = `${name.replaceAll(/[\\/]/g, '_')}_${crypto
     .createHash('md5')
@@ -29,7 +31,7 @@ async function getPackageData(name, options) {
       // No op
     }
 
-    if (data?.__time && Date.now() - data.__time < CACHE_TIME) {
+    if (data.id && data?.__time && Date.now() - data.__time < CACHE_TIME) {
       return data
     }
   }
@@ -38,6 +40,7 @@ async function getPackageData(name, options) {
     text: `Fetching package data '${styleText.green.underline(name)}' ...`,
   }).start()
 
+  data = undefined
   try {
     const response = await fetch(`https://registry.npmjs.org/${name}`)
     data = await response.json()
@@ -47,11 +50,17 @@ async function getPackageData(name, options) {
     spinner.clear()
   }
 
-  ;(async () => {
-    // Don't care about the result
-    await fs.mkdir(cacheDirectory, {recursive: true})
-    await fs.writeFile(cacheFile, JSON.stringify({...data, __time: Date.now()}))
-  })()
+  // Don't care about the result
+  cacheWritePromises.push(
+    (async () => {
+      await fs.mkdir(cacheDirectory, {recursive: true})
+      await fs.writeFile(
+        cacheFile,
+        JSON.stringify({...data, __time: Date.now()}),
+      )
+    })(),
+  )
+
   return data
 }
 
@@ -82,7 +91,6 @@ const tableOptions = {
   columns: columnSettings.map(({alignment = 'left'}) => ({
     alignment,
   })),
-  // width: 100,
 }
 
 async function addPackageData(name, versions, options) {
@@ -147,6 +155,8 @@ async function run(file, options) {
         await processDependency(dependency, options)
       }
     } else {
+      process.setMaxListeners(0)
+
       await Promise.all(
         dependencies.map((dependency) =>
           processDependency(dependency, options),
@@ -199,6 +209,8 @@ async function run(file, options) {
       )
     }
   }
+
+  await Promise.allSettled(cacheWritePromises)
 }
 
 const cli = meow(
