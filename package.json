@@ -14,7 +14,7 @@
     "node-style-text": "0.0.7",
     "table": "6.9.0",
     "timerel": "5.8.1",
-    "yocto-spinner": "0.2.0"
+    "yocto-spinner": "0.2.3"
   },
   "devDependencies": {
     "@fisker/eslint-config": "13.1.3",
