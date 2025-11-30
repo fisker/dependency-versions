@@ -30,7 +30,7 @@
     "npm-run-all2": "7.0.2",
     "prettier": "3.5.1",
     "sort-package-json": "2.14.0",
-    "stylelint": "16.14.1"
+    "stylelint": "16.26.1"
   },
   "scripts": {
     "clean": "run-p \"clean:*\"",
